@@ -1,6 +1,8 @@
 plugins {
     id 'java-library'
     id 'maven-publish'
+    id "org.jetbrains.kotlin.jvm"
+    id 'kotlin-kapt'
 }
 
 group = 'com.qq.liyaling.ts'
@@ -14,6 +16,9 @@ java {
 
 dependencies {
     implementation 'org.bouncycastle:bcprov-jdk16:1.39'
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+    // coroutine
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutine_version"
 }
 
 publishing {
