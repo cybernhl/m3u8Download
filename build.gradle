@@ -1,5 +1,7 @@
 buildscript {
     ext {
+        agp_gradle = '7.0.4'
+        android_gradle_plugin_version = agp_gradle
         kotlin_version = "1.6.21"
         // coroutine
         coroutine_version = "1.6.4"
@@ -19,6 +21,7 @@ buildscript {
         }
     }
     dependencies {
+        classpath "com.android.tools.build:gradle:$agp_gradle"
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
         classpath "org.jetbrains.kotlin:kotlin-serialization:$kotlin_version"
     }
