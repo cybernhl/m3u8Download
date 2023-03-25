@@ -1,5 +1,5 @@
 plugins {
-    id 'java'
+    id 'java-library'
     id "org.jetbrains.kotlin.jvm"
     id 'kotlin-kapt'
 }
@@ -14,13 +14,14 @@ java {
 }
 
 dependencies {
-    implementation project(path: ':library')
     testImplementation 'junit:junit:4.+'
+    testImplementation 'org.bouncycastle:bcprov-jdk16:1.46'
     implementation fileTree(dir: "libs", include: ["*.jar"])
-    implementation 'org.bouncycastle:bcprov-jdk16:1.46'
     implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
     // coroutine
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutine_version"
+    //Ref : https://blog.csdn.net/yuzhiqiang_1993/article/details/78366985
+    compileOnly 'org.bouncycastle:bcprov-jdk16:1.46'
 }
 
 tasks.withType(JavaCompile) {

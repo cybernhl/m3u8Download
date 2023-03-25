@@ -1,2 +1,3 @@
 rootProject.name = 'm3u8Download'
 include ':m3u8Download'
+include ':library'
