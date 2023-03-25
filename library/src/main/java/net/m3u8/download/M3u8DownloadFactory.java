@@ -40,6 +40,7 @@ public class M3u8DownloadFactory {
     /**
      *
      * 解决java不支持AES/CBC/PKCS7Padding模式解密
+     * //FIXME Ref : Aes128DataSource use javax crypto https://github.com/google/ExoPlayer/blob/0106f02a25a71321f9948f5aa6fefeb3008e21ca/library/hls/src/main/java/com/google/android/exoplayer2/source/hls/Aes128DataSource.java#L75
      *
      */
     static {
@@ -299,6 +300,7 @@ public class M3u8DownloadFactory {
                         File file = new File(dir + Constant.FILESEPARATOR + i + ".xyz");
                         outputStream1 = new FileOutputStream(file);
                         //开始解密ts片段，这里我们把ts后缀改为了xyz，改不改都一样
+                        //FIXME Ref : Aes128DataSource use javax crypto https://github.com/google/ExoPlayer/blob/0106f02a25a71321f9948f5aa6fefeb3008e21ca/library/hls/src/main/java/com/google/android/exoplayer2/source/hls/Aes128DataSource.java#L75
                         byte[] decrypt = decrypt(bytes, available, key, iv, method);
                         if (decrypt == null)
                             outputStream1.write(bytes, 0, available);
