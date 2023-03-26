@@ -1,6 +1,6 @@
 buildscript {
     ext {
-        agp_gradle = '7.0.4'
+        agp_gradle = '4.2.1'
         android_gradle_plugin_version = agp_gradle
         kotlin_version = "1.6.21"
         // coroutine

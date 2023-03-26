@@ -21,9 +21,6 @@ dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
     // coroutine
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutine_version"
-    implementation "com.squareup.okhttp3:okhttp:4.9.3"
-
-    implementation "com.google.android.exoplayer:exoplayer-hls:2.8.4"
 }
 
 tasks.withType(JavaCompile) {
