@@ -19,22 +19,25 @@ buildscript {
         maven {
             url "https://raw.githubusercontent.com/cybernhl/maven-repository/master/"
         }
+
+        jcenter()
+
     }
     dependencies {
         classpath "com.android.tools.build:gradle:$agp_gradle"
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
         classpath "org.jetbrains.kotlin:kotlin-serialization:$kotlin_version"
+        classpath "gradle.plugin.com.stepango.aar2jar:aar2jar:0.6"
     }
 }
 
 allprojects {
     repositories {
-        gradlePluginPortal()
+        mavenCentral()
+        google()
         maven {
             url = uri('https://repo.maven.apache.org/maven2/')
         }
-        mavenCentral()
-        google()
         maven {
             url "https://plugins.gradle.org/m2/"
         }
@@ -44,6 +47,8 @@ allprojects {
         maven {
             url "https://raw.githubusercontent.com/cybernhl/maven-repository/master/"
         }
+        jcenter()
+        gradlePluginPortal()
     }
 }
 
