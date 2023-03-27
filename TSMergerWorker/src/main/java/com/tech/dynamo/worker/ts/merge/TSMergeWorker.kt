@@ -25,7 +25,7 @@ class TSMergeWorker {
             return instance!!
         }
     }
-   fun mergeTStoMp4(tsFiles: List<File> ,target_folder: File,mp4_file_name:String) {
+    fun mergeTStoMp4(tsFiles: List<File>, target_folder: File, mp4_file_name:String) {
         workscope.launch {
             val total=tsFiles.size
             mergeTStoMp4Flow(tsFiles,target_folder,mp4_file_name).collect {
@@ -37,7 +37,7 @@ class TSMergeWorker {
         }
     }
 
-    suspend fun mergeTStoMp4Flow(tsFiles: List<File> ,target_folder: File,mp4_file_name:String): Flow<String> = flow {
+    private suspend fun mergeTStoMp4Flow(tsFiles: List<File>, target_folder: File, mp4_file_name:String): Flow<String> = flow {
         val tsFile = File(target_folder, mp4_file_name)
         val total=tsFiles.size
         FileOutputStream(tsFile).use { outputstream ->
