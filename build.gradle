@@ -2,9 +2,9 @@ buildscript {
     ext {
         agp_gradle = '4.2.1'
         android_gradle_plugin_version = agp_gradle
-        kotlin_version = "1.6.21"
+        kotlin_version = "1.4.32"
         // coroutine
-        coroutine_version = "1.6.4"
+        coroutine_version = "1.4.2"
     }
     repositories {
         gradlePluginPortal()
