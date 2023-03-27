@@ -4,9 +4,9 @@ plugins {
     id 'kotlin-kapt'
 }
 
-group = 'com.qq.liyaling.ts'
+group = 'com.tech.dynamo.worker.m3u8'
 version = '1.0.0'
-description = 'm3u8Download'
+description = 'downloadworker'
 
 java {
     sourceCompatibility JavaVersion.VERSION_11
@@ -14,13 +14,20 @@ java {
 }
 
 dependencies {
-    implementation project(path: ':library')
     testImplementation 'junit:junit:4.+'
+
+    implementation project(path: ':library')
     implementation fileTree(dir: "libs", include: ["*.jar"])
-    implementation 'org.bouncycastle:bcprov-jdk16:1.46'
+
     implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
     // coroutine
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutine_version"
+
+    implementation 'com.squareup.okhttp3:okhttp:4.10.0'
+
+    implementation 'io.lindstrom:m3u8-parser:0.24'
+
+    implementation "com.google.android.exoplayer:exoplayer:r1.5.11@aar"
 }
 
 tasks.withType(JavaCompile) {

@@ -1,9 +1,13 @@
 package com.tech.dynamo.worker.m3u8
 
+import com.google.android.exoplayer.hls.HlsMediaPlaylist
+import com.google.android.exoplayer.hls.HlsPlaylistParser
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import net.m3u8.utils.Log
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -20,7 +24,7 @@ import javax.management.openmbean.InvalidKeyException
 
 class M3U8DownloadWorker {
     private val workscope = CoroutineScope(Dispatchers.IO)
-
+    private val client = OkHttpClient.Builder().build()
     companion object {
         private val LOCK = Any()
         private var instance: M3U8DownloadWorker? = null
@@ -41,9 +45,9 @@ class M3U8DownloadWorker {
         val request = Request.Builder().url(url).build()
         val response = client.newCall(request).execute()
         if (response.isSuccessful) {
-            response.body()?.let { body ->
+            response.body?.let { body ->
                 (HlsPlaylistParser().parse(
-                    Uri.parse(url),
+                    url,
                     body.byteStream()
                 ) as? HlsMediaPlaylist)?.let { playlist ->
                     emit(M3U8Info(playlist, domainPath))
@@ -75,11 +79,12 @@ class M3U8DownloadWorker {
         baseUri: String,
         segment: HlsMediaPlaylist.Segment
     ): Flow<EncryptionInfo> = flow {
-        val keyUri = UriUtil.resolveToUri(baseUri, segment.fullSegmentEncryptionKeyUri)
+//        val keyUri = UriUtil.resolveToUri(baseUri, segment.encryptionKeyUri)
+        val keyUri = segment.encryptionKeyUri
         val request = Request.Builder().url(keyUri.toString()).build()
         val response = client.newCall(request).execute()
         if (response.isSuccessful) {
-            response.body()?.let { body ->
+            response.body?.let { body ->
                 val result = body.bytes()
                 emit(EncryptionInfo(segment.encryptionIV, result))
             }
@@ -98,7 +103,7 @@ class M3U8DownloadWorker {
         if (response.isSuccessful) {
             val tsFileName = segment.url.replace(domainPath, "")
             val tsfile = File(cachedir, tsFileName)
-            response.body()?.byteStream()?.use { encryption_inputstream ->
+            response.body?.byteStream()?.use { encryption_inputstream ->
                 val cipher: Cipher = try {
                     Cipher.getInstance("AES/CBC/PKCS7Padding")
                 } catch (e: NoSuchAlgorithmException) {
@@ -120,7 +125,7 @@ class M3U8DownloadWorker {
                         val buffer = ByteArray(4 * 1024)
                         var read: Int
                         var total: Long = 0
-                        val contentLength = response.body()?.contentLength() ?: 0
+                        val contentLength = response.body?.contentLength() ?: 0
                         while (decrypt_inputstream.read(buffer).also { read = it } != -1) {
                             output.write(buffer, 0, read)
                             total += read.toLong()
@@ -134,7 +139,7 @@ class M3U8DownloadWorker {
 
     private fun getEncryptionData(iv: String): ByteArray {
         Log.d("DownloadManager", "Show getEncryptionData")
-        val lowercase = Util.toLowerInvariant(iv)
+        val lowercase = iv.toLowerInvariant()
         val trimmedIv = if (lowercase != null && lowercase.startsWith("0x")) {
             iv.substring(2)
         } else {
@@ -150,5 +155,9 @@ class M3U8DownloadWorker {
         )
         Log.d("DownloadManager", "Show getEncryptionData ivDataWithPadding  $ivDataWithPadding")
         return ivDataWithPadding
+    }
+
+    private fun String.toLowerInvariant() : String? {
+        return this?.lowercase()
     }
 }

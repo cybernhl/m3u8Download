@@ -4,9 +4,9 @@ plugins {
     id 'kotlin-kapt'
 }
 
-group = 'com.qq.liyaling.ts'
+group = 'com.tech.dynamo.worker.ts.merge'
 version = '1.0.0'
-description = 'm3u8Download'
+description = 'mergeworker'
 
 java {
     sourceCompatibility JavaVersion.VERSION_11
