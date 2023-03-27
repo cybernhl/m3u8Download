@@ -1,7 +1,10 @@
 package com.tech.dynamo.worker.m3u8
 
-import com.google.android.exoplayer.hls.HlsMediaPlaylist
-import com.google.android.exoplayer.hls.HlsPlaylistParser
+import android.net.Uri
+import android.security.keystore.KeyProperties
+import com.google.android.exoplayer2.source.hls.playlist.HlsMediaPlaylist
+import com.google.android.exoplayer2.source.hls.playlist.HlsPlaylistParser
+import com.google.android.exoplayer2.util.UriUtil
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
@@ -21,7 +24,6 @@ import javax.crypto.CipherInputStream
 import javax.crypto.NoSuchPaddingException
 import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec
-import javax.management.openmbean.InvalidKeyException
 
 class M3U8DownloadWorker {
     private val workscope = CoroutineScope(Dispatchers.IO)
@@ -54,13 +56,13 @@ class M3U8DownloadWorker {
             } .collect {
                 val total= it.size
                 _stateFlow.value= M3U8State(2,total,100,total,it)
-                Log.e("M3U8DownloadWorker", "Show  startFetch finish  file : $it")
+                Log.e( "Show  startFetch finish  file : $it")
             }
         }
     }
 
     private suspend fun fetchM3U8(url: String): Flow<M3U8Info> = flow {
-        Log.e("M3U8DownloadWorker", "Show  fetchM3U8 : $url")
+        Log.e( "Show  fetchM3U8 : $url")
         val domainPath = url.substringBeforeLast("/") + "/"
         val request = Request.Builder().url(url).build()
         _stateFlow.value= M3U8State(0,1,0,1)
@@ -104,13 +106,13 @@ class M3U8DownloadWorker {
                 fetchTSEncryptionInfo(baseUri, segment).flatMapConcat { info ->
                     fetchEncryptionTSFile(cachedir, baseUri, segment, info)
                 }.collect {
-                    Log.e("DownloadManager", "Show  finish  file : $it")
+                    Log.e( "Show  finish  file : $it")
                     _stateFlow.value=M3U8State(1,index,100,total_count)
                     tsFiles.add(it)
                 }
             }else{
                 fetchEncryptionTSFile(cachedir, baseUri, segment, null).collect {
-                    Log.e("DownloadManager", "Show  finish  file : $it")
+                    Log.e( "Show  finish  file : $it")
                     _stateFlow.value=M3U8State(1,index,100,total_count)
                     tsFiles.add(it)
                 }
@@ -179,14 +181,14 @@ class M3U8DownloadWorker {
     }
 
     private fun getEncryptionData(iv: String): ByteArray {
-        Log.d("DownloadManager", "Show getEncryptionData")
+        Log.d( "Show getEncryptionData")
         val lowercase = iv.toLowerInvariant()
         val trimmedIv = if (lowercase != null && lowercase.startsWith("0x")) {
             iv.substring(2)
         } else {
             iv
         }
-        Log.d("DownloadManager", "Show getEncryptionData trimmedIv  $trimmedIv ")
+        Log.d( "Show getEncryptionData trimmedIv  $trimmedIv ")
         val ivData = BigInteger(trimmedIv, 16).toByteArray()
         val ivDataWithPadding = ByteArray(16)
         val offset = if (ivData.size > 16) ivData.size - 16 else 0
@@ -194,7 +196,7 @@ class M3U8DownloadWorker {
             ivData, offset, ivDataWithPadding, ivDataWithPadding.size - ivData.size
                     + offset, ivData.size - offset
         )
-        Log.d("DownloadManager", "Show getEncryptionData ivDataWithPadding  $ivDataWithPadding")
+        Log.d( "Show getEncryptionData ivDataWithPadding  $ivDataWithPadding")
         return ivDataWithPadding
     }
 
