@@ -9,7 +9,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import net.m3u8.utils.Log
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
@@ -52,17 +51,17 @@ class M3U8DownloadWorker {
                 val segments = info.list.segments
                 val firstcheck = segments.first()
                 val isEncryption =  (!firstcheck.encryptionIV.isNullOrBlank() && !firstcheck.fullSegmentEncryptionKeyUri.isNullOrBlank())
-                fetchEncryptionTSFiles(cachedir, info.domain, segments,isEncryption)
+                fetchTSFiles(cachedir, info.domain, segments,isEncryption)
             } .collect {
                 val total= it.size
                 _stateFlow.value= M3U8State(2,total,100,total,it)
-                Log.e( "Show  startFetch finish  file : $it")
+                println("M3U8DownloadWorker at startFetch Show  startFetch finish  file : $it")
             }
         }
     }
 
     private suspend fun fetchM3U8(url: String): Flow<M3U8Info> = flow {
-        Log.e( "Show  fetchM3U8 : $url")
+        println("M3U8DownloadWorker at fetchM3U8 Show input url : $url")
         val domainPath = url.substringBeforeLast("/") + "/"
         val request = Request.Builder().url(url).build()
         _stateFlow.value= M3U8State(0,1,0,1)
@@ -96,7 +95,7 @@ class M3U8DownloadWorker {
         }
     }
 
-    private suspend fun fetchEncryptionTSFiles(  cachedir: File,  baseUri: String, segments: List<HlsMediaPlaylist.Segment>,isencryption:Boolean ): Flow<List<File>> = flow {
+    private suspend fun fetchTSFiles(cachedir: File, baseUri: String, segments: List<HlsMediaPlaylist.Segment>, isencryption:Boolean ): Flow<List<File>> = flow {
         val tsFiles = mutableListOf<File>()
         val total_count=segments.size
         segments.forEach { segment ->
@@ -104,15 +103,15 @@ class M3U8DownloadWorker {
             _stateFlow.value=M3U8State(1,index,0,total_count)
             if (isencryption){
                 fetchTSEncryptionInfo(baseUri, segment).flatMapConcat { info ->
-                    fetchEncryptionTSFile(cachedir, baseUri, segment, info)
+                    fetchTSFile(cachedir, baseUri, segment, info)
                 }.collect {
-                    Log.e( "Show  finish  file : $it")
+                    println("M3U8DownloadWorker at fetchEncryptionTSFiles encryption type Show finish  file : $it")
                     _stateFlow.value=M3U8State(1,index,100,total_count)
                     tsFiles.add(it)
                 }
             }else{
-                fetchEncryptionTSFile(cachedir, baseUri, segment, null).collect {
-                    Log.e( "Show  finish  file : $it")
+                fetchTSFile(cachedir, baseUri, segment, null).collect {
+                    println("M3U8DownloadWorker at fetchEncryptionTSFiles Show finish  file : $it")
                     _stateFlow.value=M3U8State(1,index,100,total_count)
                     tsFiles.add(it)
                 }
@@ -121,7 +120,7 @@ class M3U8DownloadWorker {
         emit(tsFiles)
     }
 
-    private suspend fun fetchEncryptionTSFile(
+    private suspend fun fetchTSFile(
         cachedir: File,
         baseUri: String,
         segment: HlsMediaPlaylist.Segment,
@@ -181,14 +180,14 @@ class M3U8DownloadWorker {
     }
 
     private fun getEncryptionData(iv: String): ByteArray {
-        Log.d( "Show getEncryptionData")
+        println("M3U8DownloadWorker at getEncryptionData")
         val lowercase = iv.toLowerInvariant()
         val trimmedIv = if (lowercase != null && lowercase.startsWith("0x")) {
             iv.substring(2)
         } else {
             iv
         }
-        Log.d( "Show getEncryptionData trimmedIv  $trimmedIv ")
+        println("M3U8DownloadWorker at getEncryptionData Show getEncryptionData trimmedIv  $trimmedIv ")
         val ivData = BigInteger(trimmedIv, 16).toByteArray()
         val ivDataWithPadding = ByteArray(16)
         val offset = if (ivData.size > 16) ivData.size - 16 else 0
@@ -196,7 +195,7 @@ class M3U8DownloadWorker {
             ivData, offset, ivDataWithPadding, ivDataWithPadding.size - ivData.size
                     + offset, ivData.size - offset
         )
-        Log.d( "Show getEncryptionData ivDataWithPadding  $ivDataWithPadding")
+        println("M3U8DownloadWorker at getEncryptionData Show getEncryptionData ivDataWithPadding  $ivDataWithPadding")
         return ivDataWithPadding
     }
 

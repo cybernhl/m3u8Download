@@ -24,7 +24,7 @@ dependencies {
     testImplementation group: 'com.google.android', name: 'android', version: '1.6_r2'//provide android.net.Uri &
     testImplementation group: 'org.robolectric', name: 'android-all', version: '9-robolectric-4913185-2'
 
-    implementation project(path: ':library')
+
     compileOnly  fileTree(dir: "libs", include: ["*.jar"])//provide exoplayer local jar
 
     implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
