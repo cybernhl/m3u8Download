@@ -19,6 +19,8 @@ java {
 dependencies {
     testImplementation 'junit:junit:4.+'
     testImplementation 'com.google.truth:truth:1.0.1'
+    testImplementationAar "com.google.android.exoplayer:exoplayer-core:2.8.4"
+    testImplementationAar "com.google.android.exoplayer:exoplayer-hls:2.8.4"
     testImplementation group: 'com.google.android', name: 'android', version: '1.6_r2'//provide android.net.Uri &
     testImplementation group: 'org.robolectric', name: 'android-all', version: '9-robolectric-4913185-2'
 
@@ -32,6 +34,9 @@ dependencies {
     implementation 'com.squareup.okhttp3:okhttp:3.14.0'
 
     implementation 'io.lindstrom:m3u8-parser:0.24'
+
+    compileOnlyAar "com.google.android.exoplayer:exoplayer-core:2.8.4"
+    compileOnlyAar "com.google.android.exoplayer:exoplayer-hls:2.8.4"
 
     compileOnly group: 'com.google.android', name: 'android', version: '1.6_r2'//provide android.net.Uri &
     compileOnly group: 'org.robolectric', name: 'android-all', version: '9-robolectric-4913185-2'//provide  android.security.keystore.KeyProperties.KEY_ALGORITHM_AES
