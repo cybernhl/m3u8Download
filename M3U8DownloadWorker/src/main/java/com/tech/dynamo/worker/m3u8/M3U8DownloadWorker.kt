@@ -2,6 +2,7 @@ package com.tech.dynamo.worker.m3u8
 
 import android.net.Uri
 import android.security.keystore.KeyProperties
+import com.google.android.exoplayer2.source.hls.playlist.HlsMasterPlaylist
 import com.google.android.exoplayer2.source.hls.playlist.HlsMediaPlaylist
 import com.google.android.exoplayer2.source.hls.playlist.HlsPlaylistParser
 import com.google.android.exoplayer2.util.UriUtil
@@ -70,13 +71,19 @@ class M3U8DownloadWorker {
         val response = client.newCall(request).execute()
         if (response.isSuccessful) {
             response.body()?.let { body ->
-                (HlsPlaylistParser().parse(
-                    Uri.parse(url),
-                    body.byteStream()
-                ) as? HlsMediaPlaylist)?.let { playlist ->
-                    _stateFlow.value = M3U8ProcessState(M3U8ActionStep.FETCH_M3U8, 1, 100, 1)
-                    emit(M3U8Info(playlist, domainPath))
-                }
+                when(val playlist=HlsPlaylistParser().parse( Uri.parse(url), body.byteStream())){
+                    is HlsMediaPlaylist->{
+                        println("M3U8DownloadWorker at fetchM3U8 Show playlist variants : ${playlist }")
+                        _stateFlow.value = M3U8ProcessState(M3U8ActionStep.FETCH_M3U8, 1, 100, 1)
+                        emit(M3U8Info(playlist, domainPath))
+                    }
+                    is  HlsMasterPlaylist->{
+                        println("M3U8DownloadWorker at fetchM3U8 Show HlsMasterPlaylist variants : ${playlist.variants }")
+                        playlist.variants.forEach {
+                            println("M3U8DownloadWorker at fetchM3U8 Show HlsMasterPlaylist variant value  : ${it}")
+                        }
+                    }
+                 }
             }
         } else {
             throw IOException("Unexpected code $response")
