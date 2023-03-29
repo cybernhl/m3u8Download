@@ -18,6 +18,7 @@ import java.math.BigInteger
 import java.security.InvalidAlgorithmParameterException
 import java.security.NoSuchAlgorithmException
 import java.security.spec.AlgorithmParameterSpec
+import java.util.*
 import javax.crypto.Cipher
 import javax.crypto.CipherInputStream
 import javax.crypto.NoSuchPaddingException
@@ -27,8 +28,10 @@ import javax.crypto.spec.SecretKeySpec
 class M3U8DownloadWorker {
     private val workscope = CoroutineScope(Dispatchers.IO)
     private val client = OkHttpClient.Builder().build()
-    private var _stateFlow: MutableStateFlow<M3U8State> = MutableStateFlow(M3U8State(0,0,0,0))
-    val stateFlow: StateFlow<M3U8State> = _stateFlow
+    private var _stateFlow: MutableStateFlow<M3U8ProcessState> =
+        MutableStateFlow(M3U8ProcessState(M3U8ActionStep.INIT, 0, 0, 0))
+    val stateFlow: StateFlow<M3U8ProcessState> = _stateFlow
+
     companion object {
         private val LOCK = Any()
         private var instance: M3U8DownloadWorker? = null
@@ -43,28 +46,27 @@ class M3U8DownloadWorker {
             return instance!!
         }
     }
-
-    fun startFetch(cachedir: File,url:String){
+    fun startFetch(cachedir: File, url: String) {
         workscope.launch {
             fetchM3U8(url).flatMapConcat { info ->
                 val durationUs = info.list.durationUs //TODO notify time
                 val segments = info.list.segments
                 val firstcheck = segments.first()
-                val isEncryption =  (!firstcheck.encryptionIV.isNullOrBlank() && !firstcheck.fullSegmentEncryptionKeyUri.isNullOrBlank())
-                fetchTSFiles(cachedir, info.domain, segments,isEncryption)
-            } .collect {
-                val total= it.size
-                _stateFlow.value= M3U8State(2,total,100,total,it)
+                val isEncryption =
+                    (!firstcheck.encryptionIV.isNullOrBlank() && !firstcheck.fullSegmentEncryptionKeyUri.isNullOrBlank())
+                fetchTSFiles(cachedir, info.domain, segments, isEncryption)
+            }.collect {
+                val total = it.size
+                _stateFlow.value = M3U8ProcessState(M3U8ActionStep.FETCH_TS, total, 100, total, it)
                 println("M3U8DownloadWorker at startFetch Show  startFetch finish  file : $it")
             }
         }
     }
-
     private suspend fun fetchM3U8(url: String): Flow<M3U8Info> = flow {
         println("M3U8DownloadWorker at fetchM3U8 Show input url : $url")
         val domainPath = url.substringBeforeLast("/") + "/"
         val request = Request.Builder().url(url).build()
-        _stateFlow.value= M3U8State(0,1,0,1)
+        _stateFlow.value = M3U8ProcessState(M3U8ActionStep.FETCH_M3U8, 1, 0, 1)
         val response = client.newCall(request).execute()
         if (response.isSuccessful) {
             response.body()?.let { body ->
@@ -72,7 +74,7 @@ class M3U8DownloadWorker {
                     Uri.parse(url),
                     body.byteStream()
                 ) as? HlsMediaPlaylist)?.let { playlist ->
-                    _stateFlow.value=M3U8State(0,1,100,1)
+                    _stateFlow.value = M3U8ProcessState(M3U8ActionStep.FETCH_M3U8, 1, 100, 1)
                     emit(M3U8Info(playlist, domainPath))
                 }
             }
@@ -80,39 +82,49 @@ class M3U8DownloadWorker {
             throw IOException("Unexpected code $response")
         }
     }.flowOn(Dispatchers.IO)
-
-    private suspend fun fetchTSEncryptionInfo(  baseUri: String,  segment: HlsMediaPlaylist.Segment ): Flow<EncryptionInfo> = flow {
+    private suspend fun fetchTSEncryptionInfo(
+        baseUri: String,
+        segment: HlsMediaPlaylist.Segment
+    ): Flow<EncryptionInfo> = flow {
         val keyUri = UriUtil.resolveToUri(baseUri, segment.fullSegmentEncryptionKeyUri)
         val request = Request.Builder().url(keyUri.toString()).build()
-        _stateFlow.value=M3U8State(1,1,0,1)
+        _stateFlow.value = M3U8ProcessState(M3U8ActionStep.FETCH_ENCRYPTION_INFO, 1, 0, 1)
         val response = client.newCall(request).execute()
         if (response.isSuccessful) {
             response.body()?.let { body ->
                 val result = body.bytes()
-                _stateFlow.value=M3U8State(1,1,100,1)
+                _stateFlow.value = M3U8ProcessState(M3U8ActionStep.FETCH_ENCRYPTION_INFO, 1, 100, 1)
                 emit(EncryptionInfo(segment.encryptionIV, result))
             }
         }
     }
-
-    private suspend fun fetchTSFiles(cachedir: File, baseUri: String, segments: List<HlsMediaPlaylist.Segment>, isencryption:Boolean ): Flow<List<File>> = flow {
+    private suspend fun fetchTSFiles(
+        cachedir: File,
+        baseUri: String,
+        segments: List<HlsMediaPlaylist.Segment>,
+        isencryption: Boolean
+    ): Flow<List<File>> = flow {
         val tsFiles = mutableListOf<File>()
-        val total_count=segments.size
+        val total_count = segments.size
         segments.forEach { segment ->
-            val index= segments.indexOf(segment)
-            _stateFlow.value=M3U8State(1,index,0,total_count)
-            if (isencryption){
+            val index = segments.indexOf(segment)
+            if (isencryption) {
                 fetchTSEncryptionInfo(baseUri, segment).flatMapConcat { info ->
+                    _stateFlow.value =
+                        M3U8ProcessState(M3U8ActionStep.FETCH_TS, index, 0, total_count)
                     fetchTSFile(cachedir, baseUri, segment, info)
                 }.collect {
                     println("M3U8DownloadWorker at fetchEncryptionTSFiles encryption type Show finish  file : $it")
-                    _stateFlow.value=M3U8State(1,index,100,total_count)
+                    _stateFlow.value =
+                        M3U8ProcessState(M3U8ActionStep.FETCH_TS, index, 100, total_count)
                     tsFiles.add(it)
                 }
-            }else{
+            } else {
+                _stateFlow.value = M3U8ProcessState(M3U8ActionStep.FETCH_TS, index, 0, total_count)
                 fetchTSFile(cachedir, baseUri, segment, null).collect {
                     println("M3U8DownloadWorker at fetchEncryptionTSFiles Show finish  file : $it")
-                    _stateFlow.value=M3U8State(1,index,100,total_count)
+                    _stateFlow.value =
+                        M3U8ProcessState(M3U8ActionStep.FETCH_TS, index, 100, total_count)
                     tsFiles.add(it)
                 }
             }
@@ -133,7 +145,7 @@ class M3U8DownloadWorker {
             val tsFileName = segment.url.replace(domainPath, "")
             val tsfile = File(cachedir, tsFileName)
             response.body()?.byteStream()?.use { encryption_inputstream ->
-                if (encryptioninfo!=null){
+                if (encryptioninfo != null) {
                     val cipher: Cipher = try {
                         Cipher.getInstance("AES/CBC/PKCS7Padding")
                     } catch (e: NoSuchAlgorithmException) {
@@ -141,8 +153,9 @@ class M3U8DownloadWorker {
                     } catch (e: NoSuchPaddingException) {
                         throw RuntimeException(e)
                     }
-                    val iv: AlgorithmParameterSpec = IvParameterSpec(getEncryptionData(encryptioninfo.encryptionIV))
-                    val key  = SecretKeySpec(encryptioninfo.key , KeyProperties.KEY_ALGORITHM_AES)
+                    val iv: AlgorithmParameterSpec =
+                        IvParameterSpec(getEncryptionData(encryptioninfo.encryptionIV))
+                    val key = SecretKeySpec(encryptioninfo.key, KeyProperties.KEY_ALGORITHM_AES)
                     try {
                         cipher.init(Cipher.DECRYPT_MODE, key, iv)
                     } catch (e: java.security.InvalidKeyException) {
@@ -150,7 +163,7 @@ class M3U8DownloadWorker {
                     } catch (e: InvalidAlgorithmParameterException) {
                         throw java.lang.RuntimeException(e)
                     }
-                    CipherInputStream(encryption_inputstream, cipher).use { decrypt_inputstream->
+                    CipherInputStream(encryption_inputstream, cipher).use { decrypt_inputstream ->
                         FileOutputStream(tsfile).use { output ->
                             val buffer = ByteArray(4 * 1024)
                             var read: Int
@@ -162,7 +175,7 @@ class M3U8DownloadWorker {
                             }
                         }
                     }
-                }else{
+                } else {
                     FileOutputStream(tsfile).use { output ->
                         val buffer = ByteArray(4 * 1024)
                         var read: Int
@@ -199,7 +212,7 @@ class M3U8DownloadWorker {
         return ivDataWithPadding
     }
 
-    private fun String.toLowerInvariant() : String? {
-        return this?.toLowerCase()
+    private fun String.toLowerInvariant(): String? {
+        return this?.toLowerCase(Locale.getDefault())
     }
 }
