@@ -47,9 +47,11 @@ class M3U8DownloadWorker {
             return instance!!
         }
     }
+
     fun startFetch(cachedir: File, url: String) {
         workscope.launch {
             fetchM3U8(url).flatMapConcat { info ->
+                _stateFlow.value = M3U8ProcessState(M3U8ActionStep.FETCH_M3U8, 1, 100, 1)
                 val durationUs = info.list.durationUs //TODO notify time
                 val segments = info.list.segments
                 val firstcheck = segments.first()
@@ -63,6 +65,7 @@ class M3U8DownloadWorker {
             }
         }
     }
+
     private suspend fun fetchM3U8(url: String): Flow<M3U8Info> = flow {
         println("M3U8DownloadWorker at fetchM3U8 Show input url : $url")
         val domainPath = url.substringBeforeLast("/") + "/"
@@ -71,24 +74,24 @@ class M3U8DownloadWorker {
         val response = client.newCall(request).execute()
         if (response.isSuccessful) {
             response.body()?.let { body ->
-                when(val playlist=HlsPlaylistParser().parse( Uri.parse(url), body.byteStream())){
-                    is HlsMediaPlaylist->{
-                        println("M3U8DownloadWorker at fetchM3U8 Show playlist variants : ${playlist }")
-                        _stateFlow.value = M3U8ProcessState(M3U8ActionStep.FETCH_M3U8, 1, 100, 1)
+                when (val playlist = HlsPlaylistParser().parse(Uri.parse(url), body.byteStream())) {
+                    is HlsMediaPlaylist -> {
                         emit(M3U8Info(playlist, domainPath))
                     }
-                    is  HlsMasterPlaylist->{
-                        println("M3U8DownloadWorker at fetchM3U8 Show HlsMasterPlaylist variants : ${playlist.variants }")
-                        playlist.variants.forEach {
-                            println("M3U8DownloadWorker at fetchM3U8 Show HlsMasterPlaylist variant value  : ${it}")
+                    is HlsMasterPlaylist -> {
+                        playlist.variants.forEach { item ->
+                            fetchM3U8(domainPath + item.url).collect{
+                                emit(it)
+                            }
                         }
                     }
-                 }
+                }
             }
         } else {
             throw IOException("Unexpected code $response")
         }
     }.flowOn(Dispatchers.IO)
+
     private suspend fun fetchTSEncryptionInfo(
         baseUri: String,
         segment: HlsMediaPlaylist.Segment
@@ -105,6 +108,7 @@ class M3U8DownloadWorker {
             }
         }
     }
+
     private suspend fun fetchTSFiles(
         cachedir: File,
         baseUri: String,
